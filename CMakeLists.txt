@@ -23,13 +23,24 @@ target_compile_features(softadastra_wal PUBLIC cxx_std_20)
 # ========================
 # Dependencies
 # ========================
-if(NOT TARGET softadastra_fs)
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fs build_fs)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake)
+endif()
+
+if(NOT TARGET softadastra::fs)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../fs/CMakeLists.txt)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fs build_fs)
+    else()
+        message(FATAL_ERROR
+            "softadastra::fs not found. "
+            "Install dependencies with Vix or provide ../fs in the monorepo."
+        )
+    endif()
 endif()
 
 target_link_libraries(softadastra_wal
     PUBLIC
-        softadastra_fs
+        softadastra::fs
 )
 
 # ========================
