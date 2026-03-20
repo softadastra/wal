@@ -25,7 +25,7 @@ namespace softadastra::wal::core
      */
     std::uint64_t next() noexcept
     {
-      return value_.fetch_add(1, std::memory_order_relaxed);
+      return value_.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     /**

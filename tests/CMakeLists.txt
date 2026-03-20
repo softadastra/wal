@@ -31,3 +31,7 @@ add_test(NAME wal_replay COMMAND test_replay)
 add_executable(test_store test_store.cpp)
 target_link_libraries(test_store PRIVATE softadastra_wal)
 add_test(NAME wal_store COMMAND test_store)
+
+add_executable(test_append_event test_append_event.cpp)
+target_link_libraries(test_append_event PRIVATE softadastra_wal)
+add_test(NAME wal_append_event COMMAND test_append_event)

@@ -23,11 +23,10 @@ target_compile_features(softadastra_wal PUBLIC cxx_std_20)
 # ========================
 # Dependencies
 # ========================
-# Core (monorepo)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../core build_core)
-
 # FS (important for storage layer)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fs build_fs)
+if(NOT TARGET softadastra_fs)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fs build_fs)
+endif()
 
 target_link_libraries(softadastra_wal
     PUBLIC

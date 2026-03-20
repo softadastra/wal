@@ -5,19 +5,21 @@
 #include <iostream>
 
 #include <softadastra/wal/reader/WalReader.hpp>
-#include <softadastra/wal/core/WalRecord.hpp>
 
-using namespace softadastra;
+using namespace softadastra::wal;
 
 int main()
 {
-  std::cout << "WAL streaming example\n";
+  std::cout << "== WAL STREAM EXAMPLE ==\n";
 
-  wal::reader::WalReader reader("wal.log");
+  const std::string path = "example_wal.log";
 
-  reader.for_each([](const wal::core::WalRecord &r)
-                  { std::cout << "stream seq=" << r.sequence
-                              << " size=" << r.payload.size()
+  reader::WalReader reader(path);
+
+  reader.for_each([](const core::WalRecord &r)
+                  { std::cout << "[record] seq=" << r.sequence
+                              << " timestamp=" << r.timestamp
+                              << " payload_size=" << r.payload.size()
                               << "\n"; });
 
   return 0;

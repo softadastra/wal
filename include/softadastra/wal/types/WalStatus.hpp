@@ -9,7 +9,6 @@
 
 namespace softadastra::wal::types
 {
-
   enum class WalStatus : std::uint8_t
   {
     Pending = 0,

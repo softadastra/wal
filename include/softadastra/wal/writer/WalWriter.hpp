@@ -7,20 +7,23 @@
 
 #include <memory>
 #include <cstdint>
+#include <ctime>
 
 #include <softadastra/wal/core/Sequence.hpp>
 #include <softadastra/wal/core/WalRecord.hpp>
 #include <softadastra/wal/core/WalConfig.hpp>
-
 #include <softadastra/wal/storage/WalStore.hpp>
-
 #include <softadastra/wal/encoding/WalEncoder.hpp>
+#include <softadastra/wal/utils/FileEventSerializer.hpp>
+#include <softadastra/fs/events/FileEvent.hpp>
 
 namespace softadastra::wal::writer
 {
   namespace core = softadastra::wal::core;
   namespace storage = softadastra::wal::storage;
   namespace encoding = softadastra::wal::encoding;
+  namespace utils = softadastra::wal::utils;
+  namespace fs_events = softadastra::fs::events;
 
   class WalWriter
   {
@@ -51,10 +54,48 @@ namespace softadastra::wal::writer
       // 3. append to storage
       store_->append(bytes);
 
-      // 4. mark as persisted
+      // 4. flush if enabled
+      if (config_.auto_flush)
+      {
+        store_->flush();
+      }
+
+      // 5. mark as persisted
       record.status = core::types::WalStatus::Persisted;
 
       return record.sequence;
+    }
+
+    /**
+     * @brief Append a filesystem event to WAL
+     */
+    std::uint64_t append_event(const fs_events::FileEvent &event)
+    {
+      core::WalRecord record;
+
+      switch (event.type)
+      {
+      case softadastra::fs::types::FileEventType::Created:
+        record.type = core::types::WalRecordType::Put;
+        break;
+
+      case softadastra::fs::types::FileEventType::Updated:
+        record.type = core::types::WalRecordType::Update;
+        break;
+
+      case softadastra::fs::types::FileEventType::Deleted:
+        record.type = core::types::WalRecordType::Delete;
+        break;
+
+      default:
+        record.type = core::types::WalRecordType::Unknown;
+        break;
+      }
+
+      record.timestamp = static_cast<std::uint64_t>(std::time(nullptr));
+      record.payload = utils::FileEventSerializer::serialize(event);
+
+      return append(record);
     }
 
     /**

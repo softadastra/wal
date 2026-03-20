@@ -9,7 +9,6 @@
 
 namespace softadastra::wal::types
 {
-
   enum class WalRecordType : std::uint8_t
   {
     Unknown = 0,
