@@ -1,0 +1,13 @@
+{
+  "dependencies": [
+    {
+      "commit": "46c30320b3a0eab8c229952bf527696326e1ab7f",
+      "hash": "7e02477ea508990cd99143c8d9ac054a39ac3c7a74419c2119ada9e493bc6f85",
+      "id": "softadastra/fs",
+      "repo": "https://github.com/softadastra/fs",
+      "tag": "v1.2.0",
+      "version": "1.2.0"
+    }
+  ],
+  "lockVersion": 1
+}
