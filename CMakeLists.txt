@@ -23,14 +23,12 @@ target_compile_features(softadastra_wal PUBLIC cxx_std_20)
 # ========================
 # Dependencies
 # ========================
-# FS (important for storage layer)
 if(NOT TARGET softadastra_fs)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fs build_fs)
 endif()
 
 target_link_libraries(softadastra_wal
     PUBLIC
-        softadastra_core
         softadastra_fs
 )
 
@@ -47,6 +45,7 @@ target_include_directories(softadastra_wal
 # Sources
 # ========================
 file(GLOB_RECURSE WAL_SOURCES
+    CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
@@ -58,7 +57,7 @@ target_sources(softadastra_wal
 # ========================
 # Compiler options
 # ========================
-if (MSVC)
+if(MSVC)
     target_compile_options(softadastra_wal PRIVATE /W4 /permissive-)
 else()
     target_compile_options(softadastra_wal PRIVATE -Wall -Wextra -Wpedantic)
@@ -79,14 +78,14 @@ add_library(softadastra::wal ALIAS softadastra_wal)
 # ========================
 # Examples
 # ========================
-if (SOFTADASTRA_WAL_BUILD_EXAMPLES)
+if(SOFTADASTRA_WAL_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
 # ========================
 # Tests
 # ========================
-if (SOFTADASTRA_WAL_BUILD_TESTS)
+if(SOFTADASTRA_WAL_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()

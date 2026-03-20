@@ -8,8 +8,6 @@ It guarantees that:
 
 > No accepted operation is ever lost, even in the presence of failures.
 
----
-
 ## Purpose
 
 The goal of `softadastra/wal` is simple:
@@ -22,8 +20,6 @@ This module ensures that the system can always:
 * Resume after disconnection
 * Replay operations deterministically
 
----
-
 ## Core Principle
 
 > Write first. Sync later.
@@ -33,8 +29,6 @@ Every operation must:
 1. Be written to the WAL
 2. Be flushed to durable storage
 3. Then be processed or sent over the network
-
----
 
 ## Responsibilities
 
@@ -46,8 +40,6 @@ The `wal` module provides:
 * Log replay capabilities
 * Crash recovery
 
----
-
 ## What this module does NOT do
 
 * No sync logic
@@ -56,8 +48,6 @@ The `wal` module provides:
 * No metadata management
 
 👉 It only guarantees durability.
-
----
 
 ## Design Principles
 
@@ -71,13 +61,9 @@ Only:
 * Read
 * Replay
 
----
-
 ### 2. Durable
 
 An operation is considered valid only after it is persisted.
-
----
 
 ### 3. Ordered
 
@@ -86,13 +72,9 @@ All operations have a strict sequence:
 * Monotonic increasing IDs
 * Deterministic replay
 
----
-
 ### 4. Deterministic
 
 Replaying the same WAL must produce the same state.
-
----
 
 ## Module Structure
 
@@ -107,8 +89,6 @@ modules/wal/
 └── src/
 ```
 
----
-
 ## Core Components
 
 ### WalRecord
@@ -122,8 +102,6 @@ Typical fields:
 * Payload
 * Timestamp
 
----
-
 ### WalWriter
 
 Responsible for:
@@ -132,8 +110,6 @@ Responsible for:
 * Ensuring durability (fsync or equivalent)
 * Managing write ordering
 
----
-
 ### WalReader
 
 Provides:
@@ -141,8 +117,6 @@ Provides:
 * Sequential reading
 * Streaming replay
 * Iteration over records
-
----
 
 ### WalStore
 
@@ -153,8 +127,6 @@ Manages:
 * Rotation (future)
 * Storage lifecycle
 
----
-
 ### Sequence
 
 Handles:
@@ -163,14 +135,11 @@ Handles:
 * Ordering guarantees
 * Replay positioning
 
----
-
 ## Example Usage
 
 ```cpp id="ex3"
 #include <softadastra/wal/writer/WalWriter.hpp>
 #include <softadastra/wal/utils/FileEventSerializer.hpp>
-
 #include <softadastra/fs/events/FileEvent.hpp>
 
 using namespace softadastra;
@@ -195,23 +164,28 @@ int main()
 }
 ```
 
----
-
 ## Replay Example
 
 ```cpp id="ex4"
-#include <softadastra/wal/WalReader.hpp>
+#include <softadastra/wal/reader/WalReader.hpp>
 
 using namespace softadastra::wal;
 
-WalReader reader("data/wal.log");
+void replay(const std::string &path)
+{
+  reader::WalReader reader(path);
 
-reader.forEach([](const WalRecord& record) {
-    // Apply operation
-});
+  reader.for_each([](const core::WalRecord &record)
+  {
+    // deterministic apply(record)
+  });
+}
+
+int main()
+{
+  replay("data/wal.log");
+}
 ```
-
----
 
 ## Integration
 
@@ -220,8 +194,6 @@ Used by:
 * Sync engine (primary)
 * Metadata layer (indirectly)
 * Application runtime
-
----
 
 ## Guarantees
 
@@ -232,8 +204,6 @@ The WAL ensures:
 * Replay after crash
 * Consistent recovery
 
----
-
 ## Failure Model
 
 The WAL is designed to survive:
@@ -242,8 +212,6 @@ The WAL is designed to survive:
 * System crash
 * Network failure
 * Partial execution
-
----
 
 ## Dependencies
 
@@ -255,8 +223,6 @@ The WAL is designed to survive:
 
 * Filesystem (POSIX / platform APIs)
 
----
-
 ## Roadmap
 
 * Log segmentation
@@ -266,8 +232,6 @@ The WAL is designed to survive:
 * Replication-ready WAL
 * Binary format optimization
 
----
-
 ## Rules
 
 * Never modify existing records
@@ -275,15 +239,11 @@ The WAL is designed to survive:
 * Never execute before persisting
 * Always guarantee flush before ack
 
----
-
 ## Philosophy
 
 The WAL is not just a log.
 
 > It is the source of truth.
-
----
 
 ## Summary
 
@@ -292,7 +252,11 @@ The WAL is not just a log.
 * Orders all operations
 * Foundation of local-first systems
 
----
+## Installation
+
+```bash
+vix add @softadastra/wal
+```
 
 ## License
 
