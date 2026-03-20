@@ -1,0 +1,42 @@
+{
+  "name": "wal",
+  "namespace": "softadastra",
+  "version": "1.0.0",
+  "type": "library",
+  "include": "include",
+  "license": "MIT",
+  "description": "Write-Ahead Log (WAL) engine for Softadastra. Provides durable, ordered, and deterministic persistence of operations with support for encoding, decoding, streaming reads, and replay. Designed as the core event sourcing layer for offline-first and distributed systems.",
+  "keywords": [
+    "softadastra",
+    "wal",
+    "write-ahead-log",
+    "event-sourcing",
+    "persistence",
+    "durability",
+    "log",
+    "append-only",
+    "replay",
+    "streaming",
+    "encoding",
+    "decoder",
+    "storage",
+    "deterministic",
+    "offline-first",
+    "distributed-systems",
+    "recovery",
+    "replication",
+    "c++",
+    "cpp",
+    "c++20",
+    "systems",
+    "infrastructure",
+    "library"
+  ],
+  "repository": "https://github.com/softadastra/wal",
+  "authors": [
+    {
+      "name": "Gaspard Kirira",
+      "github": "Gaspardkirira"
+    }
+  ]
+}
