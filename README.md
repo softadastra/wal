@@ -168,18 +168,31 @@ Handles:
 ## Example Usage
 
 ```cpp id="ex3"
-#include <softadastra/wal/WalWriter.hpp>
-#include <softadastra/wal/WalRecord.hpp>
+#include <softadastra/wal/writer/WalWriter.hpp>
+#include <softadastra/wal/utils/FileEventSerializer.hpp>
 
-using namespace softadastra::wal;
+#include <softadastra/fs/events/FileEvent.hpp>
 
-WalWriter writer("data/wal.log");
+using namespace softadastra;
 
-WalRecord record;
-record.type = "file_update";
-record.payload = "...";
+int main()
+{
+  wal::core::WalConfig config;
+  config.path = "data/wal.log";
 
-writer.append(record);
+  wal::writer::WalWriter writer(config);
+
+  // Example: file event → WAL
+  fs::events::FileEvent event = ...;
+
+  wal::core::WalRecord record;
+  record.type = wal::types::WalRecordType::Put;
+  record.timestamp = 123456;
+  record.payload =
+      wal::utils::FileEventSerializer::serialize(event);
+
+  writer.append(record);
+}
 ```
 
 ---
