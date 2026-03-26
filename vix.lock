@@ -1,12 +1,20 @@
 {
   "dependencies": [
     {
-      "commit": "46c30320b3a0eab8c229952bf527696326e1ab7f",
-      "hash": "7e02477ea508990cd99143c8d9ac054a39ac3c7a74419c2119ada9e493bc6f85",
+      "commit": "75c87ffdbc9e3e0ad51afce4a4bde7df8faf9da6",
+      "hash": "e06934492c438a9949126a2f78d19c2f168139a86b072661080a1b05f110c692",
       "id": "softadastra/fs",
       "repo": "https://github.com/softadastra/fs",
-      "tag": "v1.2.0",
-      "version": "1.2.0"
+      "tag": "v1.8.0",
+      "version": "1.8.0"
+    },
+    {
+      "commit": "ab087d56af5fc585d063e4b0c2dc91a800c06917",
+      "hash": "19f729d37bc333060d28ca6d15dc9e47aa30107562d904e365dd3e0c792e99b4",
+      "id": "softadastra/core",
+      "repo": "https://github.com/softadastra/core",
+      "tag": "v1.4.0",
+      "version": "1.4.0"
     }
   ],
   "lockVersion": 1
