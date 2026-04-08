@@ -5,9 +5,10 @@
 #ifndef SOFTADASTRA_WAL_ENCODER_HPP
 #define SOFTADASTRA_WAL_ENCODER_HPP
 
-#include <vector>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 #include <softadastra/wal/core/WalRecord.hpp>
 #include <softadastra/wal/encoding/WalFormat.hpp>

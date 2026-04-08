@@ -5,6 +5,7 @@
 #ifndef SOFTADASTRA_WAL_FORMAT_HPP
 #define SOFTADASTRA_WAL_FORMAT_HPP
 
+#include <cstddef>
 #include <cstdint>
 
 namespace softadastra::wal::encoding
