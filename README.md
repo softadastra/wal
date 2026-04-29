@@ -2,255 +2,363 @@
 
 > Durable Write-Ahead Log for local-first systems.
 
-The `wal` module is the **foundation of durability** in Softadastra.
+`softadastra/wal` is the durability layer of Softadastra.
 
-It guarantees that:
+It persists operations before they are executed, synchronized, or replayed.
 
-> No accepted operation is ever lost, even in the presence of failures.
+The core rule is simple:
+
+> *Write first. Apply later.*
 
 ## Purpose
 
-The goal of `softadastra/wal` is simple:
+The WAL exists to guarantee that accepted operations are not lost after a crash, restart, or network failure.
 
-> Persist every operation before it is executed or synchronized.
+It allows Softadastra to:
 
-This module ensures that the system can always:
+- persist operations durably
+- replay operations deterministically
+- recover after process or system failure
+- resume work after disconnection
+- preserve operation ordering
 
-* Recover after a crash
-* Resume after disconnection
-* Replay operations deterministically
+## Core Guarantee
 
-## Core Principle
+Once an operation is successfully appended to the WAL, it has a durable sequence number and can be replayed later.
 
-> Write first. Sync later.
+```cpp
+auto result = writer.append(type, payload);
+```
 
-Every operation must:
+If `result.is_ok()` returns `true`, the operation was accepted by the WAL.
 
-1. Be written to the WAL
-2. Be flushed to durable storage
-3. Then be processed or sent over the network
+## What this module does
 
-## Responsibilities
+`softadastra/wal` provides:
 
-The `wal` module provides:
-
-* Append-only log storage
-* Durable persistence of operations
-* Sequential ordering (monotonic sequence)
-* Log replay capabilities
-* Crash recovery
+- append-only WAL records
+- monotonic sequence numbers
+- stable binary encoding
+- payload checksums
+- sequential reading
+- deterministic replay
+- basic filesystem event persistence helpers
 
 ## What this module does NOT do
 
-* No sync logic
-* No network communication
-* No filesystem watching
-* No metadata management
+- synchronization
+- networking
+- conflict resolution
+- filesystem watching
+- metadata indexing
+- application state management
 
-👉 It only guarantees durability.
+> The WAL stores bytes and preserves order.
+> Higher-level modules decide what those bytes mean.
 
 ## Design Principles
 
-### 1. Append-only
+### Append-only
 
-The WAL is never modified in place.
+Records are appended to the log. Existing records are never modified in place.
 
-Only:
+### Durable
 
-* Append
-* Read
-* Replay
+A record is considered accepted only after the storage append succeeds.
 
-### 2. Durable
+### Ordered
 
-An operation is considered valid only after it is persisted.
+Every record receives a monotonic sequence number. Replay follows WAL order.
 
-### 3. Ordered
+### Deterministic
 
-All operations have a strict sequence:
+Reading the same WAL in the same order must produce the same replay stream.
 
-* Monotonic increasing IDs
-* Deterministic replay
+### Storage-agnostic payload
 
-### 4. Deterministic
+A payload can represent:
 
-Replaying the same WAL must produce the same state.
+- a filesystem event
+- a sync operation
+- a metadata mutation
+- a checkpoint
+- an application command
 
 ## Module Structure
 
-```id="w4l9ax"
-modules/wal/
-├── include/softadastra/wal/
-│   ├── WalRecord.hpp
-│   ├── WalWriter.hpp
-│   ├── WalReader.hpp
-│   ├── WalStore.hpp
-│   └── Sequence.hpp
-└── src/
+```
+include/softadastra/wal/
+├── core/
+│   ├── Sequence.hpp
+│   ├── WalConfig.hpp
+│   └── WalRecord.hpp
+├── encoding/
+│   ├── WalDecoder.hpp
+│   ├── WalEncoder.hpp
+│   └── WalFormat.hpp
+├── reader/
+│   └── WalReader.hpp
+├── replay/
+│   └── WalReplayer.hpp
+├── storage/
+│   ├── WalFile.hpp
+│   ├── WalSegment.hpp
+│   └── WalStore.hpp
+├── types/
+│   ├── WalRecordType.hpp
+│   └── WalStatus.hpp
+├── utils/
+│   ├── Checksum.hpp
+│   ├── FileEventDeserializer.hpp
+│   └── FileEventSerializer.hpp
+└── writer/
+    └── WalWriter.hpp
 ```
 
-## Core Components
+## Core Types
 
-### WalRecord
+### `WalRecord`
 
-Represents a single operation.
+A single operation stored in the WAL. It contains:
 
-Typical fields:
+- `sequence`
+- `type`
+- `status`
+- `timestamp`
+- `payload` (opaque binary data)
 
-* Sequence number
-* Operation type
-* Payload
-* Timestamp
+```cpp
+wal::core::WalRecord record{
+    0,
+    wal::types::WalRecordType::Put,
+    payload};
+```
 
-### WalWriter
+### `WalWriter`
 
-Responsible for:
+High-level append API. Assigns the sequence number, encodes the record, and appends it to storage.
 
-* Appending records
-* Ensuring durability (fsync or equivalent)
-* Managing write ordering
+```cpp
+wal::writer::WalWriter writer{
+    wal::core::WalConfig::durable("data/wal.log")};
 
-### WalReader
+auto result = writer.append(
+    wal::types::WalRecordType::Put,
+    payload);
 
-Provides:
+if (result.is_ok())
+{
+    auto sequence = result.value();
+}
+```
 
-* Sequential reading
-* Streaming replay
-* Iteration over records
+### `WalReader`
 
-### WalStore
+Sequential reader for WAL files.
 
-Manages:
+```cpp
+wal::reader::WalReader reader{"data/wal.log"};
 
-* WAL files
-* Segmentation (future)
-* Rotation (future)
-* Storage lifecycle
+auto result = reader.for_each(
+    [](const wal::core::WalRecord &record)
+    {
+        // inspect or process record
+    });
 
-### Sequence
+if (result.is_err())
+{
+    // handle read error
+}
+```
 
-Handles:
+### `WalReplayer`
 
-* Monotonic sequence generation
-* Ordering guarantees
-* Replay positioning
+Deterministic replay helper.
 
-## Example Usage
+```cpp
+wal::replay::WalReplayer replayer{"data/wal.log"};
 
-```cpp id="ex3"
+auto result = replayer.replay(
+    [](const wal::core::WalRecord &record)
+    {
+        // apply record deterministically
+    });
+
+if (result.is_ok() && replayer.has_replayed())
+{
+    auto last = replayer.last_sequence();
+}
+```
+
+### `Sequence`
+
+Thread-safe monotonic sequence generator.
+
+```cpp
+wal::core::Sequence sequence;
+
+auto first  = sequence.next();  // 1
+auto second = sequence.next();  // 2
+```
+
+## Filesystem Event Example
+
+`wal` can persist events produced by `softadastra/fs`:
+
+```cpp
 #include <softadastra/wal/writer/WalWriter.hpp>
-#include <softadastra/wal/utils/FileEventSerializer.hpp>
 #include <softadastra/fs/events/FileEvent.hpp>
 
 using namespace softadastra;
 
 int main()
 {
-  wal::core::WalConfig config;
-  config.path = "data/wal.log";
+    wal::writer::WalWriter writer{
+        wal::core::WalConfig::durable("data/wal.log")};
 
-  wal::writer::WalWriter writer(config);
+    fs::events::FileEvent event;
 
-  // Example: file event → WAL
-  fs::events::FileEvent event = ...;
+    auto result = writer.append_event(event);
 
-  wal::core::WalRecord record;
-  record.type = wal::types::WalRecordType::Put;
-  record.timestamp = 123456;
-  record.payload =
-      wal::utils::FileEventSerializer::serialize(event);
+    if (result.is_err())
+    {
+        return 1;
+    }
 
-  writer.append(record);
+    return 0;
 }
 ```
 
-## Replay Example
+`append_event()` maps filesystem events to WAL record types:
 
-```cpp id="ex4"
-#include <softadastra/wal/reader/WalReader.hpp>
+| Event | WAL Record Type |
+|-------|----------------|
+| `Created` | `Put` |
+| `Updated` | `Update` |
+| `Deleted` | `Delete` |
 
-using namespace softadastra::wal;
+## Generic Payload Example
 
-void replay(const std::string &path)
-{
-  reader::WalReader reader(path);
+Use this when the caller already has serialized bytes:
 
-  reader.for_each([](const core::WalRecord &record)
-  {
-    // deterministic apply(record)
-  });
-}
+```cpp
+#include <softadastra/wal/writer/WalWriter.hpp>
+
+using namespace softadastra;
 
 int main()
 {
-  replay("data/wal.log");
+    wal::writer::WalWriter writer{
+        wal::core::WalConfig::durable("data/wal.log")};
+
+    wal::core::WalRecord::Payload payload{
+        'h', 'e', 'l', 'l', 'o'};
+
+    auto result = writer.append(
+        wal::types::WalRecordType::Put,
+        std::move(payload));
+
+    return result.is_ok() ? 0 : 1;
 }
 ```
 
-## Integration
+## Read All Records
 
-Used by:
+```cpp
+#include <softadastra/wal/reader/WalReader.hpp>
 
-* Sync engine (primary)
-* Metadata layer (indirectly)
-* Application runtime
+using namespace softadastra;
 
-## Guarantees
+int main()
+{
+    wal::reader::WalReader reader{"data/wal.log"};
 
-The WAL ensures:
+    auto records = reader.read_all();
 
-* No data loss after commit
-* Ordered operations
-* Replay after crash
-* Consistent recovery
+    if (records.is_err())
+    {
+        return 1;
+    }
+
+    for (const auto &record : records.value())
+    {
+        // process record
+    }
+
+    return 0;
+}
+```
+
+## Binary Format
+
+Current format version: `1`
+
+```
+uint32  magic
+uint32  version
+uint64  sequence
+uint8   record_type
+uint8   status
+int64   timestamp_millis
+uint32  payload_size
+bytes   payload
+uint32  checksum
+```
+
+Integer values are encoded in **little-endian** order.
+The checksum is computed over the payload only.
+
+## Configuration
+
+```cpp
+auto config = wal::core::WalConfig::durable("data/wal.log");
+```
+
+Default durable behavior:
+
+- auto flush enabled
+- checksum enabled
+- max WAL file size set to 64 MiB
+
+For tests or benchmarks:
+
+```cpp
+auto config = wal::core::WalConfig::fast("data/wal.log");
+```
+
+## Error Handling
+
+The WAL API uses `softadastra::core::types::Result`. Public operations do not throw for normal failures.
+
+```cpp
+auto result = writer.flush();
+
+if (result.is_err())
+{
+    const auto &error = result.error();
+}
+```
 
 ## Failure Model
 
-The WAL is designed to survive:
+The WAL is designed for systems that may face:
 
-* Process crash
-* System crash
-* Network failure
-* Partial execution
+- process crashes
+- restarts
+- network disconnection
+- partial execution
+- interrupted replay
+- corrupted trailing records
 
-## Dependencies
-
-### Internal
-
-* softadastra/core
-
-### External
-
-* Filesystem (POSIX / platform APIs)
-
-## Roadmap
-
-* Log segmentation
-* Compaction
-* Checksums and corruption detection
-* Streaming WAL
-* Replication-ready WAL
-* Binary format optimization
+When reading, the WAL stops safely at the first invalid, incomplete, or corrupted record.
 
 ## Rules
 
-* Never modify existing records
-* Never skip sequence numbers
-* Never execute before persisting
-* Always guarantee flush before ack
-
-## Philosophy
-
-The WAL is not just a log.
-
-> It is the source of truth.
-
-## Summary
-
-* Guarantees durability
-* Enables recovery
-* Orders all operations
-* Foundation of local-first systems
+- Write before apply
+- Never mutate existing records in place
+- Preserve sequence order
+- Treat the WAL as the recovery source
+- Keep payload interpretation outside the WAL core
 
 ## Installation
 
@@ -260,4 +368,4 @@ vix add @softadastra/wal
 
 ## License
 
-See root LICENSE file.
+See the root `LICENSE` file.
