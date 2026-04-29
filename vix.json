@@ -1,7 +1,7 @@
 {
   "name": "wal",
   "namespace": "softadastra",
-  "version": "0.10.0",
+  "version": "0.11.1",
   "type": "library",
   "include": "include",
   "license": "MIT",
@@ -42,7 +42,7 @@
   "deps": [
     {
       "id": "softadastra/fs",
-      "version": "1.11.0"
+      "version": "1.11.1"
     }
   ]
 }
