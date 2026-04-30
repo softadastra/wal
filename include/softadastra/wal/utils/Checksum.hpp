@@ -113,9 +113,15 @@ namespace softadastra::wal::utils
     [[nodiscard]] static constexpr value_type compute(
         std::string_view data) noexcept
     {
-      return compute(
-          reinterpret_cast<const std::uint8_t *>(data.data()),
-          data.size());
+      value_type hash = offset_basis();
+
+      for (char c : data)
+      {
+        hash ^= static_cast<std::uint8_t>(c);
+        hash *= prime();
+      }
+
+      return hash;
     }
 
     /**
