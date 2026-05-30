@@ -8,7 +8,7 @@
   "deps": [
     {
       "id": "softadastra/fs",
-      "version": "1.12.1"
+      "version": "1.12.0"
     }
   ],
   "description": "Durable Write-Ahead Log primitives for reliable Softadastra sync and recovery.",
@@ -44,5 +44,5 @@
   "namespace": "softadastra",
   "repository": "https://github.com/softadastra/wal",
   "type": "library",
-  "version": "1.12.2"
+  "version": "1.12.3"
 }
