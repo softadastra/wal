@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include <softadastra/wal/core/WalConfig.hpp>
@@ -26,26 +27,41 @@ int main()
 
   writer::WalWriter writer(config);
 
-  core::WalRecord record1;
-  record1.type = types::WalRecordType::Put;
-  record1.timestamp = 123456;
-  record1.payload = {1, 2, 3, 4};
-  writer.append(record1);
+  core::WalRecord record1(
+      0,
+      types::WalRecordType::Put,
+      core::WalRecord::Payload{1, 2, 3, 4});
 
-  core::WalRecord record2;
-  record2.type = types::WalRecordType::Update;
-  record2.timestamp = 123457;
-  record2.payload = {5, 6};
-  writer.append(record2);
+  auto seq1_result = writer.append(record1);
+  assert(seq1_result.is_ok());
+  assert(seq1_result.value() == 1);
 
-  writer.flush();
+  core::WalRecord record2(
+      0,
+      types::WalRecordType::Update,
+      core::WalRecord::Payload{5, 6});
+
+  auto seq2_result = writer.append(record2);
+  assert(seq2_result.is_ok());
+  assert(seq2_result.value() == 2);
+
+  auto flush_result = writer.flush();
+  assert(flush_result.is_ok());
+
+  assert(std::filesystem::exists(wal_path));
+  assert(std::filesystem::file_size(wal_path) > 0);
 
   replay::WalReplayer replayer(wal_path);
 
   std::vector<std::uint64_t> applied;
 
-  replayer.replay([&](const core::WalRecord &record)
-                  { applied.push_back(record.sequence); });
+  auto replay_result = replayer.replay(
+      [&](const core::WalRecord &record)
+      {
+        applied.push_back(record.sequence);
+      });
+
+  assert(replay_result.is_ok());
 
   assert(applied.size() == 2);
   assert(applied[0] == 1);
@@ -58,5 +74,6 @@ int main()
   std::filesystem::remove(wal_path);
 
   std::cout << "test_replay passed\n";
+
   return 0;
 }

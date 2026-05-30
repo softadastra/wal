@@ -6,10 +6,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
+#include <string>
 
+#include <softadastra/fs/events/FileEvent.hpp>
 #include <softadastra/fs/path/Path.hpp>
-#include <softadastra/fs/state/FileState.hpp>
 #include <softadastra/fs/state/FileMetadata.hpp>
+#include <softadastra/fs/state/FileState.hpp>
 #include <softadastra/fs/types/FileEventType.hpp>
 #include <softadastra/fs/types/FileType.hpp>
 #include <softadastra/wal/writer/WalWriter.hpp>
@@ -44,17 +47,22 @@ int main()
       current,
       std::nullopt};
 
-  const std::uint64_t seq = writer.append_event(event);
+  auto seq_result = writer.append_event(event);
+  assert(seq_result.is_ok());
 
+  const std::uint64_t seq = seq_result.value();
   assert(seq == 1);
 
-  writer.flush();
+  auto flush_result = writer.flush();
+  assert(flush_result.is_ok());
 
+  assert(writer.current_sequence() == 1);
   assert(std::filesystem::exists(wal_path));
   assert(std::filesystem::file_size(wal_path) > 0);
 
   std::filesystem::remove(wal_path);
 
   std::cout << "test_append_event passed\n";
+
   return 0;
 }

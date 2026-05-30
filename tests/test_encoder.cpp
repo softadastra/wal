@@ -43,27 +43,40 @@ void test_encode_decode_file_event()
       current,
       std::nullopt};
 
-  wal::core::WalRecord record;
-  record.sequence = 1;
-  record.type = wal::types::WalRecordType::Put;
-  record.status = wal::types::WalStatus::Pending;
-  record.timestamp = 999;
-  record.payload = wal::utils::FileEventSerializer::serialize(event);
+  auto payload = wal::utils::FileEventSerializer::serialize(event);
+
+  wal::core::WalRecord record(
+      1,
+      wal::types::WalRecordType::Put,
+      payload);
+
+  assert(record.is_valid());
+  assert(record.sequence == 1);
+  assert(record.type == wal::types::WalRecordType::Put);
+  assert(record.status == wal::types::WalStatus::Pending);
+  assert(record.timestamp.is_valid());
+  assert(record.payload == payload);
 
   auto buffer = wal::encoding::WalEncoder::encode(record);
-  auto decoded = wal::encoding::WalDecoder::decode(buffer.data(), buffer.size());
+
+  auto decoded = wal::encoding::WalDecoder::decode(
+      buffer.data(),
+      buffer.size());
 
   assert(decoded.has_value());
 
   const auto &decoded_record = *decoded;
 
+  assert(decoded_record.is_valid());
   assert(decoded_record.sequence == record.sequence);
   assert(decoded_record.type == record.type);
   assert(decoded_record.status == record.status);
   assert(decoded_record.timestamp == record.timestamp);
   assert(decoded_record.payload == record.payload);
 
-  auto decoded_event = wal::utils::FileEventDeserializer::deserialize(decoded_record.payload);
+  auto decoded_event = wal::utils::FileEventDeserializer::deserialize(
+      decoded_record.payload);
+
   assert(decoded_event.has_value());
 
   assert(decoded_event->type == fs::types::FileEventType::Created);
@@ -77,5 +90,6 @@ void test_encode_decode_file_event()
 int main()
 {
   test_encode_decode_file_event();
+
   return 0;
 }

@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include <softadastra/fs/events/FileEvent.hpp>
@@ -17,8 +19,9 @@
 
 #include <softadastra/wal/core/WalConfig.hpp>
 #include <softadastra/wal/reader/WalReader.hpp>
-#include <softadastra/wal/writer/WalWriter.hpp>
+#include <softadastra/wal/types/WalRecordType.hpp>
 #include <softadastra/wal/utils/FileEventDeserializer.hpp>
+#include <softadastra/wal/writer/WalWriter.hpp>
 
 using namespace softadastra;
 
@@ -51,27 +54,37 @@ void test_reader_reads_written_event()
       current,
       std::nullopt};
 
-  const std::uint64_t seq = writer.append_event(event);
+  auto seq_result = writer.append_event(event);
+  assert(seq_result.is_ok());
+
+  const std::uint64_t seq = seq_result.value();
   assert(seq == 1);
 
-  writer.flush();
+  auto flush_result = writer.flush();
+  assert(flush_result.is_ok());
 
   assert(std::filesystem::exists(wal_path));
   assert(std::filesystem::file_size(wal_path) > 0);
 
   wal::reader::WalReader reader(config.path);
 
-  auto records = reader.read_all();
+  auto records_result = reader.read_all();
+  assert(records_result.is_ok());
+
+  const auto &records = records_result.value();
+
   assert(records.size() == 1);
 
   const auto &record = records[0];
 
   assert(record.sequence == 1);
   assert(record.type == wal::types::WalRecordType::Put);
-  assert(record.timestamp > 0);
+  assert(record.timestamp.is_valid());
   assert(!record.payload.empty());
 
-  auto decoded_event = wal::utils::FileEventDeserializer::deserialize(record.payload);
+  auto decoded_event = wal::utils::FileEventDeserializer::deserialize(
+      record.payload);
+
   assert(decoded_event.has_value());
 
   assert(decoded_event->type == fs::types::FileEventType::Created);
@@ -87,5 +100,6 @@ void test_reader_reads_written_event()
 int main()
 {
   test_reader_reads_written_event();
+
   return 0;
 }
