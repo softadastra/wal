@@ -221,11 +221,28 @@ namespace softadastra::wal::storage
      * This is useful for tests and diagnostics.
      * For replay, prefer WalReader.
      *
+     * If the WAL file is currently open for append, pending bytes are flushed
+     * before opening a read stream. This avoids stale reads and Windows-specific
+     * file access issues during tests.
+     *
      * @return File bytes on success, Error on failure.
      */
-    [[nodiscard]] BytesResult read_all() const
+    [[nodiscard]] BytesResult read_all()
     {
-      std::ifstream in(path_, std::ios::binary);
+      if (is_open())
+      {
+        auto flushed = flush();
+
+        if (flushed.is_err())
+        {
+          return BytesResult::err(flushed.error());
+        }
+      }
+
+      std::ifstream in(
+          path_,
+          std::ios::binary |
+              std::ios::ate);
 
       if (!in)
       {
@@ -235,8 +252,6 @@ namespace softadastra::wal::storage
                 "failed to open WAL file for reading",
                 core_errors::ErrorContext(path_)));
       }
-
-      in.seekg(0, std::ios::end);
 
       const auto end = in.tellg();
 
@@ -250,6 +265,7 @@ namespace softadastra::wal::storage
       }
 
       const auto size = static_cast<std::size_t>(end);
+
       in.seekg(0, std::ios::beg);
 
       std::vector<std::uint8_t> buffer(size);
@@ -272,7 +288,6 @@ namespace softadastra::wal::storage
 
       return BytesResult::ok(std::move(buffer));
     }
-
     /**
      * @brief Closes the WAL file.
      */
