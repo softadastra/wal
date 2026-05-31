@@ -3,6 +3,7 @@
  */
 
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -19,14 +20,32 @@
 
 using namespace softadastra;
 
+namespace
+{
+  [[nodiscard]] std::filesystem::path make_test_dir()
+  {
+    const auto unique_id =
+        std::chrono::steady_clock::now()
+            .time_since_epoch()
+            .count();
+
+    auto dir =
+        std::filesystem::temp_directory_path() /
+        ("softadastra_wal_append_event_" + std::to_string(unique_id));
+
+    std::filesystem::create_directories(dir);
+
+    return dir;
+  }
+}
+
 int main()
 {
-  const std::string wal_path = "test_wal_event.log";
-
-  std::filesystem::remove(wal_path);
+  const auto test_dir = make_test_dir();
+  const auto wal_path = test_dir / "test_wal_event.log";
 
   wal::core::WalConfig config;
-  config.path = wal_path;
+  config.path = wal_path.string();
   config.auto_flush = true;
 
   wal::writer::WalWriter writer(config);
@@ -60,7 +79,8 @@ int main()
   assert(std::filesystem::exists(wal_path));
   assert(std::filesystem::file_size(wal_path) > 0);
 
-  std::filesystem::remove(wal_path);
+  std::error_code ec;
+  std::filesystem::remove_all(test_dir, ec);
 
   std::cout << "test_append_event passed\n";
 

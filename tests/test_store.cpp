@@ -3,8 +3,9 @@
  */
 
 #include <cassert>
+#include <chrono>
 #include <cstdint>
-#include <cstdio>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -16,19 +17,45 @@
 
 using namespace softadastra::wal;
 
-static std::vector<std::uint8_t> make_data(std::uint8_t v, std::size_t n = 4)
+namespace
 {
-  return std::vector<std::uint8_t>(n, v);
+  [[nodiscard]] std::filesystem::path make_test_dir(const std::string &name)
+  {
+    const auto unique_id =
+        std::chrono::steady_clock::now()
+            .time_since_epoch()
+            .count();
+
+    auto dir =
+        std::filesystem::temp_directory_path() /
+        (name + "_" + std::to_string(unique_id));
+
+    std::filesystem::create_directories(dir);
+
+    return dir;
+  }
+
+  std::vector<std::uint8_t> make_data(std::uint8_t v, std::size_t n = 4)
+  {
+    return std::vector<std::uint8_t>(n, v);
+  }
+
+  void cleanup(const std::filesystem::path &path)
+  {
+    std::error_code ec;
+    std::filesystem::remove_all(path, ec);
+  }
 }
 
 void test_wal_file_append_read()
 {
   std::cout << "[test] wal_file_append_read\n";
 
-  const std::string path = "test_wal_file.log";
+  const auto test_dir = make_test_dir("softadastra_wal_file");
+  const auto path = test_dir / "test_wal_file.log";
 
   {
-    storage::WalFile file(path);
+    storage::WalFile file(path.string());
 
     auto d1 = make_data(1);
     auto d2 = make_data(2);
@@ -44,7 +71,7 @@ void test_wal_file_append_read()
   }
 
   {
-    storage::WalFile file(path);
+    storage::WalFile file(path.string());
 
     auto result = file.read_all();
     assert(result.is_ok());
@@ -52,12 +79,12 @@ void test_wal_file_append_read()
     const auto &data = result.value();
 
     assert(!data.empty());
-    assert(data.size() == 8); // 4 + 4
+    assert(data.size() == 8);
     assert(data[0] == 1);
     assert(data[4] == 2);
   }
 
-  std::remove(path.c_str());
+  cleanup(test_dir);
 
   std::cout << "[ok] wal_file_append_read\n";
 }
@@ -66,10 +93,11 @@ void test_wal_store_basic()
 {
   std::cout << "[test] wal_store_basic\n";
 
-  const std::string path = "test_wal_store.log";
+  const auto test_dir = make_test_dir("softadastra_wal_store");
+  const auto path = test_dir / "test_wal_store.log";
 
   core::WalConfig config;
-  config.path = path;
+  config.path = path.string();
   config.auto_flush = true;
 
   storage::WalStore store(config);
@@ -93,7 +121,7 @@ void test_wal_store_basic()
   assert(data[4] == 20);
   assert(store.bytes_written() == 8);
 
-  std::remove(path.c_str());
+  cleanup(test_dir);
 
   std::cout << "[ok] wal_store_basic\n";
 }
@@ -102,13 +130,13 @@ void test_wal_segment_basic()
 {
   std::cout << "[test] wal_segment_basic\n";
 
-  const std::string path = "test_segment.log";
+  const auto test_dir = make_test_dir("softadastra_wal_segment");
+  const auto path = test_dir / "test_segment.log";
 
   storage::WalSegment segment(
-      1,    // id
-      path, // path
-      100   // start_sequence
-  );
+      1,
+      path.string(),
+      100);
 
   assert(segment.id() == 1);
   assert(segment.start_sequence() == 100);
@@ -138,7 +166,7 @@ void test_wal_segment_basic()
   assert(data.size() == 4);
   assert(data[0] == 7);
 
-  std::remove(path.c_str());
+  cleanup(test_dir);
 
   std::cout << "[ok] wal_segment_basic\n";
 }
